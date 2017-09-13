@@ -34,9 +34,9 @@ int main(int argc, char ** argv) {
     for(unsigned int i = 0; i < n; i++)
     {
         int curr_pos = x;
-        unsigned int seed = (unsigned int) clock();
         unsigned int next_step;
         unsigned int steps_done = 0;
+        unsigned int seed = (unsigned int) clock();
 
         while (curr_pos != b && curr_pos != a)
         {
@@ -73,7 +73,7 @@ int main(int argc, char ** argv) {
     fprintf(out, "%.2f %.1lf %lfs %d %d %d %d %.2f %d\n", b_probability, steps_mean, time, a, b, x, n, p, thread_num);
     fclose(out);
 
-    //printf("total time: %lf\n", time);
+    printf("total time: %lf\n", time);
 
     return 0;
 }
