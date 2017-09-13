@@ -27,6 +27,12 @@ int main(int argc, char ** argv) {
         thread_num = atoi(argv[6]);
     }
 
+    int * rands = (int*)malloc(sizeof(int) * thread_num);
+    for (size_t i = 0; i < thread_num; i++)
+    {
+        rands[i] = rand();
+    }
+
     start_time = omp_get_wtime();
     omp_init_lock(&lock);
     omp_set_num_threads(thread_num);
@@ -36,7 +42,7 @@ int main(int argc, char ** argv) {
         int curr_pos = x;
         unsigned int next_step;
         unsigned int steps_done = 0;
-        unsigned int seed = (unsigned int) clock();
+        unsigned int seed = (unsigned int) clock() * rands[omp_get_thread_num()];
 
         while (curr_pos != b && curr_pos != a)
         {
@@ -74,6 +80,8 @@ int main(int argc, char ** argv) {
     fclose(out);
 
     printf("total time: %lf\n", time);
+
+    free(rands);
 
     return 0;
 }
