@@ -131,6 +131,41 @@ void merge(int * array,
     }
 }
 
+void parallel_merge_sort (int * array, size_t arr_len,
+                     size_t chunk_len, int * result)
+{
+    int flag = 0;
+    for(size_t j = 2 * chunk_len; j <= 2 * arr_len; j *= 2)
+    {
+        if (flag)
+        {
+            memcpy(array, result, sizeof(int) * arr_len);
+        }
+        else
+        {
+            memcpy(result, array, sizeof(int) * arr_len);
+        }
+
+        #pragma omp parallel for
+        for (size_t i = 0; i < arr_len; i += j)
+        {
+            if (i + j <= arr_len)
+            {
+                merge(array, i, i + j / 2 - 1, i + j / 2, i + j - 1, result, i);
+            }
+            else
+            {
+                if (i + j / 2 < arr_len)
+                {
+                    merge(array, i, i + j / 2 - 1, i + j / 2, arr_len - 1, result, i);
+                }
+            }
+        }
+        flag = 1;
+
+    }
+}
+
 
 
 int main(int argc, char ** argv)
@@ -160,25 +195,21 @@ int main(int argc, char ** argv)
         srand((unsigned int)time(NULL));
     }
 
+    print_array(arr, n);
+
     // preparation for merging
     gen_array(arr, n);
     omp_set_num_threads(thread_count);
     sort_chunks(arr, n, m);
-
-
-
-    print_array(arr, n);
-
     int * result = (int *)malloc((sizeof(int) * n));
 
-    merge(arr, 0, 3, 4, 7, result, 0);
+    //merging
+    parallel_merge_sort(arr, n, m, result);
+
     print_array(result, n);
 
-//    insertion_sort(a, n);
-//    print_array(a, n);
-//    printf("%d\n", bin_search(5, a, 0, 7));
-//
-//    free(arr);
+    free(arr);
+    free(result);
 
     return 0;
 }
