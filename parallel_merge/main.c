@@ -4,10 +4,10 @@
 #include <time.h>
 #include <memory.h>
 
-//int comparator (const void * a, const void * b)
-//{
-//    return ( *(int*)a - *(int*)b );
-//}
+int comparator (const void * a, const void * b)
+{
+    return ( *(int*)a - *(int*)b );
+}
 
 void gen_array(int * a, size_t len)
 {
@@ -17,13 +17,13 @@ void gen_array(int * a, size_t len)
     }
 }
 
-void print_array(int * a, size_t len)
+void print_array(int * a, size_t len, FILE * out)
 {
     for (size_t i = 0; i < len; i++)
     {
-        printf("%d ", a[i]);
+        fprintf(out, "%d ", a[i]);
     }
-    printf("\n");
+    fprintf(out, "\n");
 }
 
 void insertion_sort(int * a, size_t len)
@@ -162,7 +162,6 @@ void parallel_merge_sort (int * array, size_t arr_len,
             }
         }
         flag = 1;
-
     }
 }
 
@@ -171,8 +170,13 @@ void parallel_merge_sort (int * array, size_t arr_len,
 int main(int argc, char ** argv)
 {
     int * arr;
+    int * result;
+    int * arr_copy;
     size_t n, m;
     int thread_count;
+    FILE * stats;
+    FILE * data;
+    double start_time, end_time_1, end_time_2;
 
     if (argc != 4)
     {
@@ -181,12 +185,17 @@ int main(int argc, char ** argv)
     }
     else
     {
+        //initialization
         n = (unsigned) atoi(argv[1]);
         m = (unsigned) atoi(argv[2]);
         thread_count = atoi(argv[3]);
         arr = (int *)malloc(sizeof(int) * n);
+        result = (int *)malloc((sizeof(int) * n));
+        arr_copy = (int *)malloc((sizeof(int) * n));
+        stats = fopen("stats.txt", "w");
+        data = fopen("data.txt", "w");
 
-        if (arr == NULL)
+        if (arr == NULL || result == NULL)
         {
             printf("virtual memory exhausted\n");
             exit(1);
@@ -195,19 +204,32 @@ int main(int argc, char ** argv)
         srand((unsigned int)time(NULL));
     }
 
-    print_array(arr, n);
-
     // preparation for merging
     gen_array(arr, n);
+    memcpy(arr_copy, arr, sizeof(int) * n);
+    fprintf(data, "Original array:\n");
+    print_array(arr, n, data);
     omp_set_num_threads(thread_count);
+
+    //parallel merge sort
+    start_time = omp_get_wtime();
     sort_chunks(arr, n, m);
-    int * result = (int *)malloc((sizeof(int) * n));
-
-    //merging
     parallel_merge_sort(arr, n, m, result);
+    end_time_1 = omp_get_wtime() - start_time;
 
-    print_array(result, n);
+    //quick sort
+    start_time = omp_get_wtime();
+    qsort(arr_copy, n, sizeof(int), comparator);
+    end_time_2 = omp_get_wtime() - start_time;
 
+    printf("Parallel merge sort time: %lf\nQuick sort time: %lf\n", end_time_1, end_time_2);
+
+    fprintf(data, "Sorted array\n");
+    print_array(result, n, data);
+    fprintf(stats, "%lfs %ld %ld %d", end_time_1, n, m, thread_count);
+
+    fclose(stats);
+    fclose(data);
     free(arr);
     free(result);
 
