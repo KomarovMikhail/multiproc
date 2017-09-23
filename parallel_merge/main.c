@@ -55,6 +55,7 @@ void sort_chunks(int * array, size_t arr_len, size_t chunk_len)
         {
             insertion_sort(array + i, arr_len - i);
         }
+
     }
 }
 
@@ -114,19 +115,14 @@ void merge(int * array,
         size_t mid_3 = left_3 + (mid_1 - left_1) + (mid_2 - left_2);
         result[mid_3] = array[mid_1];
 
-        #pragma omp parallel
+
+        #pragma omp task
         {
-            #pragma omp sections
-            {
-                #pragma omp section
-                {
-                    merge(array, left_1, mid_1 - 1, left_2, mid_2 - 1, result, left_3);
-                }
-                #pragma omp section
-                {
-                    merge(array, mid_1 + 1, right_1, mid_2, right_2, result, mid_3 + 1);
-                }
-            }
+            merge(array, left_1, mid_1 - 1, left_2, mid_2 - 1, result, left_3);
+        }
+        #pragma omp task
+        {
+            merge(array, mid_1 + 1, right_1, mid_2, right_2, result, mid_3 + 1);
         }
     }
 }
@@ -134,6 +130,8 @@ void merge(int * array,
 void parallel_merge_sort (int * array, size_t arr_len,
                      size_t chunk_len, int * result)
 {
+    sort_chunks(array, arr_len, chunk_len);
+
     int flag = 0;
     for(size_t j = 2 * chunk_len; j <= 2 * arr_len; j *= 2)
     {
@@ -204,7 +202,7 @@ int main(int argc, char ** argv)
         srand((unsigned int)time(NULL));
     }
 
-    // preparation for merging
+    // preparation for sorting
     gen_array(arr, n);
     memcpy(arr_copy, arr, sizeof(int) * n);
     fprintf(data, "Original array:\n");
@@ -213,7 +211,6 @@ int main(int argc, char ** argv)
 
     //parallel merge sort
     start_time = omp_get_wtime();
-    sort_chunks(arr, n, m);
     parallel_merge_sort(arr, n, m, result);
     end_time_1 = omp_get_wtime() - start_time;
 
@@ -222,7 +219,7 @@ int main(int argc, char ** argv)
     qsort(arr_copy, n, sizeof(int), comparator);
     end_time_2 = omp_get_wtime() - start_time;
 
-    printf("Parallel merge sort time: %lf\nQuick sort time: %lf\n", end_time_1, end_time_2);
+    //printf("Parallel merge sort time: %lf\nQuick sort time: %lf\n", end_time_1, end_time_2);
 
     fprintf(data, "Sorted array\n");
     print_array(result, n, data);
