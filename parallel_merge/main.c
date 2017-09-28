@@ -45,7 +45,7 @@ void insertion_sort(int * a, size_t len)
 void sort_chunks(int * array, size_t arr_len, size_t chunk_len)
 {
     #pragma omp parallel for
-    for (int i = 0; i < arr_len; i+= chunk_len)
+    for (size_t i = 0; i < arr_len; i+= chunk_len)
     {
         if (i + chunk_len <= arr_len)
         {
@@ -115,7 +115,6 @@ void merge(int * array,
         size_t mid_3 = left_3 + (mid_1 - left_1) + (mid_2 - left_2);
         result[mid_3] = array[mid_1];
 
-
         #pragma omp task
         {
             merge(array, left_1, mid_1 - 1, left_2, mid_2 - 1, result, left_3);
@@ -133,6 +132,7 @@ void parallel_merge_sort (int * array, size_t arr_len,
     sort_chunks(array, arr_len, chunk_len);
 
     int flag = 0;
+
     for(size_t j = 2 * chunk_len; j <= 2 * arr_len; j *= 2)
     {
         if (flag)
@@ -143,6 +143,7 @@ void parallel_merge_sort (int * array, size_t arr_len,
         {
             memcpy(result, array, sizeof(int) * arr_len);
         }
+
 
         #pragma omp parallel for
         for (size_t i = 0; i < arr_len; i += j)
@@ -159,6 +160,7 @@ void parallel_merge_sort (int * array, size_t arr_len,
                 }
             }
         }
+
         flag = 1;
     }
 }
@@ -221,7 +223,7 @@ int main(int argc, char ** argv)
 
     //printf("Parallel merge sort time: %lf\nQuick sort time: %lf\n", end_time_1, end_time_2);
 
-    fprintf(data, "Sorted array\n");
+    fprintf(data, "Sorted array:\n");
     print_array(result, n, data);
     fprintf(stats, "%lfs %ld %ld %d", end_time_1, n, m, thread_count);
 
@@ -229,6 +231,7 @@ int main(int argc, char ** argv)
     fclose(data);
     free(arr);
     free(result);
+    free(arr_copy);
 
     return 0;
 }
