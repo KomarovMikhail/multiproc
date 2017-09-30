@@ -49,11 +49,13 @@ void sort_chunks(int * array, size_t arr_len, size_t chunk_len)
     {
         if (i + chunk_len <= arr_len)
         {
-            insertion_sort(array + i, chunk_len);
+            //insertion_sort(array + i, chunk_len);
+            qsort(array + i, chunk_len, sizeof(int), comparator);
         }
         else
         {
-            insertion_sort(array + i, arr_len - i);
+            //insertion_sort(array + i, arr_len - i);
+            qsort(array + i, arr_len - i, sizeof(int), comparator);
         }
 
     }
@@ -90,6 +92,8 @@ void swap(size_t * a, size_t * b) //used only for size_t variables
     * a ^= * b;
 }
 
+/* parallel merge algorithm
+
 void merge(int * array,
            size_t left_1, size_t right_1,
            size_t left_2, size_t right_2,
@@ -125,6 +129,50 @@ void merge(int * array,
         }
     }
 }
+*/
+
+void merge(const int * array,
+           size_t left_1, size_t right_1,
+           size_t left_2, size_t right_2,
+           int * result, size_t left_3)
+{
+    size_t index_1 = left_1;
+    size_t index_2 = left_2;
+    size_t index_3 = left_3;
+
+    size_t n_1 = right_1 - left_1 + 1;
+    size_t n_2 = right_2 - left_2 + 1;
+
+    if (n_1 == 0 && n_2 == 0)
+    {
+        return;
+    }
+    else
+    {
+        while (index_1 <= right_1 && index_2 <= right_2)
+        {
+            if (array[index_1] <= array[index_2])
+            {
+                result[index_3++] = array[index_1++];
+            }
+            else
+            {
+                result[index_3++] = array[index_2++];
+            }
+        }
+
+        while (index_1 <= right_1)
+        {
+            result[index_3++] = array[index_1++];
+        }
+
+        while (index_2 <= right_2)
+        {
+            result[index_3++] = array[index_2++];
+        }
+    }
+
+}
 
 void parallel_merge_sort (int * array, size_t arr_len,
                      size_t chunk_len, int * result)
@@ -142,6 +190,7 @@ void parallel_merge_sort (int * array, size_t arr_len,
         else
         {
             memcpy(result, array, sizeof(int) * arr_len);
+            flag = 1;
         }
 
 
@@ -160,8 +209,6 @@ void parallel_merge_sort (int * array, size_t arr_len,
                 }
             }
         }
-
-        flag = 1;
     }
 }
 
@@ -221,7 +268,7 @@ int main(int argc, char ** argv)
     qsort(arr_copy, n, sizeof(int), comparator);
     end_time_2 = omp_get_wtime() - start_time;
 
-    //printf("Parallel merge sort time: %lf\nQuick sort time: %lf\n", end_time_1, end_time_2);
+    printf("Parallel merge sort time: %lf\nQuick sort time: %lf\n", end_time_1, end_time_2);
 
     fprintf(data, "Sorted array:\n");
     print_array(result, n, data);
