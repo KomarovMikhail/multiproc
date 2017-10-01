@@ -92,48 +92,10 @@ void swap(size_t * a, size_t * b) //used only for size_t variables
     * a ^= * b;
 }
 
-void merge(int * array,
-           size_t left_1, size_t right_1,
-           size_t left_2, size_t right_2,
-           int * result, size_t left_3)
-{
-    size_t n_1 = right_1 - left_1 + 1;
-    size_t n_2 = right_2 - left_2 + 1;
-
-    if (n_1 < n_2)
-    {
-        swap(&left_1, &left_2);
-        swap(&right_1, &right_2);
-        swap(&n_1, &n_2);
-    }
-    if (n_1 == 0)
-    {
-        return;
-    }
-    else
-    {
-        size_t mid_1 = (right_1 + left_1) / 2;
-        size_t mid_2 = bin_search(array[mid_1], array, left_2, right_2);
-        size_t mid_3 = left_3 + (mid_1 - left_1) + (mid_2 - left_2);
-        result[mid_3] = array[mid_1];
-
-        {
-//#pragma omp task
-            {
-                merge(array, left_1, mid_1 - 1, left_2, mid_2 - 1, result, left_3);
-            }
-//#pragma omp task
-            {
-                merge(array, mid_1 + 1, right_1, mid_2, right_2, result, mid_3 + 1);
-            }
-        }
-    }
-}
-
-/*void merge(const int * array,
-           size_t left_1, size_t right_1,
-           size_t left_2, size_t right_2,
-           int * result, size_t left_3)
+void simple_merge(const int * array,
+                  size_t left_1, size_t right_1,
+                  size_t left_2, size_t right_2,
+                  int * result, size_t left_3)
 {
     size_t index_1 = left_1;
     size_t index_2 = left_2;
@@ -170,8 +132,43 @@ void merge(int * array,
             result[index_3++] = array[index_2++];
         }
     }
+}
 
-}*/
+void merge(int * array,
+           size_t left_1, size_t right_1,
+           size_t left_2, size_t right_2,
+           int * result, size_t left_3)
+{
+    size_t n_1 = right_1 - left_1 + 1;
+    size_t n_2 = right_2 - left_2 + 1;
+
+    if (n_1 < n_2)
+    {
+        swap(&left_1, &left_2);
+        swap(&right_1, &right_2);
+        swap(&n_1, &n_2);
+    }
+    if (n_1 == 0)
+    {
+        return;
+    }
+    else
+    {
+        size_t mid_1 = (right_1 + left_1) / 2;
+        size_t mid_2 = bin_search(array[mid_1], array, left_2, right_2);
+        size_t mid_3 = left_3 + (mid_1 - left_1) + (mid_2 - left_2);
+        result[mid_3] = array[mid_1];
+
+        #pragma omp task
+        {
+            simple_merge(array, left_1, mid_1 - 1, left_2, mid_2 - 1, result, left_3);
+        }
+        #pragma omp task
+        {
+            simple_merge(array, mid_1 + 1, right_1, mid_2, right_2, result, mid_3 + 1);
+        }
+    }
+}
 
 void parallel_merge_sort (int * array, size_t arr_len,
                      size_t chunk_len, int * result)
@@ -255,7 +252,6 @@ int main(int argc, char ** argv)
     fprintf(data, "Original array:\n");
     print_array(arr, n, data);
     omp_set_num_threads(thread_count);
-    omp_set_nested(1);
 
     //parallel merge sort
     start_time = omp_get_wtime();
