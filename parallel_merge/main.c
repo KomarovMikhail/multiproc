@@ -92,8 +92,6 @@ void swap(size_t * a, size_t * b) //used only for size_t variables
     * a ^= * b;
 }
 
-/* parallel merge algorithm
-
 void merge(int * array,
            size_t left_1, size_t right_1,
            size_t left_2, size_t right_2,
@@ -119,19 +117,20 @@ void merge(int * array,
         size_t mid_3 = left_3 + (mid_1 - left_1) + (mid_2 - left_2);
         result[mid_3] = array[mid_1];
 
-        #pragma omp task
         {
-            merge(array, left_1, mid_1 - 1, left_2, mid_2 - 1, result, left_3);
-        }
-        #pragma omp task
-        {
-            merge(array, mid_1 + 1, right_1, mid_2, right_2, result, mid_3 + 1);
+//#pragma omp task
+            {
+                merge(array, left_1, mid_1 - 1, left_2, mid_2 - 1, result, left_3);
+            }
+//#pragma omp task
+            {
+                merge(array, mid_1 + 1, right_1, mid_2, right_2, result, mid_3 + 1);
+            }
         }
     }
 }
-*/
 
-void merge(const int * array,
+/*void merge(const int * array,
            size_t left_1, size_t right_1,
            size_t left_2, size_t right_2,
            int * result, size_t left_3)
@@ -172,7 +171,7 @@ void merge(const int * array,
         }
     }
 
-}
+}*/
 
 void parallel_merge_sort (int * array, size_t arr_len,
                      size_t chunk_len, int * result)
@@ -181,7 +180,7 @@ void parallel_merge_sort (int * array, size_t arr_len,
 
     int flag = 0;
 
-    for(size_t j = 2 * chunk_len; j <= 2 * arr_len; j *= 2)
+    for(size_t j = 2 * chunk_len; j <= 2 * arr_len; j += j)
     {
         if (flag)
         {
@@ -193,8 +192,7 @@ void parallel_merge_sort (int * array, size_t arr_len,
             flag = 1;
         }
 
-
-        #pragma omp parallel for
+        #pragma omp parallel for shared(array, result)
         for (size_t i = 0; i < arr_len; i += j)
         {
             if (i + j <= arr_len)
@@ -257,6 +255,7 @@ int main(int argc, char ** argv)
     fprintf(data, "Original array:\n");
     print_array(arr, n, data);
     omp_set_num_threads(thread_count);
+    omp_set_nested(1);
 
     //parallel merge sort
     start_time = omp_get_wtime();
