@@ -1,2 +1,2 @@
 all:
-	gcc main.c -pthread -fopenmp -ggdb -o run
+	gcc main.c merge.c merge.h -pthread -fopenmp -ggdb -o run
