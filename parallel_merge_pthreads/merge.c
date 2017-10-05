@@ -193,6 +193,28 @@ void merge(int * array,
     }
 }
 
+void * merge_iteration(void * args)
+{
+    struct merge_iteration_t * params = args;
+    size_t i = params->i;
+    size_t j = params->j;
+    size_t arr_len = params->arr_len;
+    int * array = params->array;
+    int * result = params->result;
+
+    if (i + j <= arr_len)
+    {
+        merge(array, i, i + j / 2 - 1, i + j / 2, i + j - 1, result, i);
+    }
+    else
+    {
+        if (i + j / 2 < arr_len)
+        {
+            merge(array, i, i + j / 2 - 1, i + j / 2, arr_len - 1, result, i);
+        }
+    }
+}
+
 void parallel_merge_sort (int * array, size_t arr_len,
                           size_t chunk_len, int * result,
                           pthread_t * threads, size_t thread_count)
@@ -213,7 +235,30 @@ void parallel_merge_sort (int * array, size_t arr_len,
             flag = 1;
         }
 
-        for (size_t i = 0; i < arr_len; i += j)
+        size_t i = 0;
+        struct merge_iteration_t params;
+        params.array = array;
+        params.arr_len = arr_len;
+        params.result = result;
+        params.j = j;
+
+        while (i < arr_len)
+        {
+            for (size_t t = 0; t < thread_count; t++)
+            {
+                params.i = i;
+                pthread_create(threads + t, NULL, merge_iteration, &params);
+                pthread_join(threads[t], NULL);
+
+                i += j;
+                if (i >=arr_len)
+                {
+                    break;
+                }
+            }
+        }
+
+        /*for (i = 0; i < arr_len; i += j)
         {
             if (i + j <= arr_len)
             {
@@ -226,6 +271,6 @@ void parallel_merge_sort (int * array, size_t arr_len,
                     merge(array, i, i + j / 2 - 1, i + j / 2, arr_len - 1, result, i);
                 }
             }
-        }
+        }*/
     }
 }

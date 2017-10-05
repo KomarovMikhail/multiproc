@@ -49,7 +49,7 @@ int main(int argc, char ** argv)
     gen_array(arr, n);
     memcpy(arr_copy, arr, sizeof(int) * n);
     fprintf(data, "Original array:\n");
-    print_array(arr, n, stdout);
+//    print_array(arr, n, stdout);
 
     //parallel merge sort
     start_time = omp_get_wtime();
@@ -64,7 +64,7 @@ int main(int argc, char ** argv)
     printf("Parallel merge sort time: %lf\nQuick sort time: %lf\n", end_time_1, end_time_2);
 
     fprintf(data, "Sorted array:\n");
-    print_array(result, n, stdout);
+//    print_array(result, n, stdout);
     fprintf(stats, "%lfs %ld %ld %ld", end_time_1, n, m, thread_count);
 
     fclose(stats);

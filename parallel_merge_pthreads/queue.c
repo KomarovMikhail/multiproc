@@ -12,7 +12,7 @@ node_t * node_init(void * value, node_t * next, node_t * prev)
 
 void node_destroy(node_t * node)
 {
-    //free(node->value);
+    free(node->value);
     free(node->next);
     free(node->prev);
     free(node);
@@ -20,12 +20,12 @@ void node_destroy(node_t * node)
 
 queue_t * queue_init()
 {
-    queue_t * q = (queue_t) {
-            .size = 0,
-            .head = NULL,
-            .tail = NULL
-    };
-    pthread_mutex_init(&q->mutex, NULL);
+    queue_t * q = (queue_t *)malloc(sizeof(queue_t));
+    q->size = 0;
+    q->head = NULL;
+    q->tail = NULL;
+
+    pthread_mutex_init(&(q->mutex), NULL);
     return q;
 }
 
@@ -61,7 +61,7 @@ void * queue_pop(queue_t * q)
     if (q->size == 1)
     {
         res = q->head->value;
-        node_destroy(q->head);
+        //node_destroy(q->head);
         q->head = NULL;
         q->tail = NULL;
     }
@@ -69,7 +69,7 @@ void * queue_pop(queue_t * q)
     {
         res = q->head->value;
         q->head = q->head->prev;
-        node_destroy(q->head->next);
+        //node_destroy(q->head->next);
         q->head->next = NULL;
 
     }
@@ -85,5 +85,11 @@ size_t queue_get_size(queue_t * q)
 
 void queue_destroy(queue_t * q)
 {
+    while (q->size > 0)
+    {
+        queue_pop(q);
+    }
 
+    pthread_mutex_destroy(&(q->mutex));
+    free(q);
 }
