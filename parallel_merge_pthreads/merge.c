@@ -2,6 +2,31 @@
 #include <stdlib.h>
 #include <memory.h>
 
+chunk_t chunk_init(int * array, size_t arr_len, size_t chunk_len, size_t index)
+{
+    chunk_t res;
+    res.array = array;
+    res.arr_len = arr_len;
+    res.chunk_len = chunk_len;
+    res.index = index;
+    return res;
+}
+
+merge_iteration_t merge_iteration_init(int * array, int * result,
+                                         size_t arr_len, size_t i, size_t j,
+                                         size_t thread_id, pthread_t * threads)
+{
+    merge_iteration_t res;
+    res.array = array;
+    res.result = result;
+    res.arr_len = arr_len;
+    res.i = i;
+    res.j = j;
+    res.thread_id = thread_id;
+    res.threads = threads;
+    return res;
+}
+
 int comparator (const void * a, const void * b)
 {
     return ( *(int*)a - *(int*)b );
@@ -24,56 +49,37 @@ void print_array(int * a, size_t len, FILE * out)
     fprintf(out, "\n");
 }
 
-void insertion_sort(int * a, size_t len)
-{
-    for (size_t i = 1; i < len; i++)
-    {
-        int x = a[i];
-        size_t j = i;
-        while (j > 0 && a[j-1] > x)
-        {
-            a[j] = a[j - 1];
-            j = j - 1;
-        }
-        a[j] = x;
-    }
-
-}
-
 void * sort_chunk(void * args)
 {
     struct chunk_t * chunk_params = args;
 
     if (chunk_params->index + chunk_params->chunk_len <= chunk_params->arr_len)
     {
-        //insertion_sort(array + i, chunk_len);
         qsort(chunk_params->array + chunk_params->index,
               chunk_params->chunk_len, sizeof(int), comparator);
     }
     else
     {
-        //insertion_sort(array + i, arr_len - i);
         qsort(chunk_params->array + chunk_params->index,
               chunk_params->arr_len - chunk_params->index, sizeof(int), comparator);
     }
 }
 
 void sort_chunks(int * array, const size_t arr_len, const size_t chunk_len,
-                 pthread_t * threads, const size_t thread_count)
+                 pthread_t * threads, const size_t thread_count, threadpool_t * threadpool)
 {
     size_t i = 0;
-    struct chunk_t chunk_params;
-    chunk_params.array = array;
-    chunk_params.arr_len = arr_len;
-    chunk_params.chunk_len = chunk_len;
+
+    chunk_t * chunk_params = (chunk_t *) malloc (sizeof(chunk_t) * thread_count);
 
     while (i < arr_len)
     {
+        size_t threads_working = 0;
         for (size_t j = 0; j < thread_count; j++)
         {
-            chunk_params.index = i;
-            pthread_create(threads + j, NULL, sort_chunk, &chunk_params);
-            pthread_join(threads[j], NULL);
+            chunk_params[j] = chunk_init(array, arr_len, chunk_len, i);
+            pthread_create(threads + j, NULL, sort_chunk, chunk_params + j);
+            threads_working++;
 
             i += chunk_len;
             if (i >= arr_len)
@@ -81,7 +87,12 @@ void sort_chunks(int * array, const size_t arr_len, const size_t chunk_len,
                 break;
             }
         }
+        for (size_t t = 0; t < threads_working; t++)
+        {
+            pthread_join(threads[t], NULL);
+        }
     }
+    free(chunk_params);
 }
 
 size_t max (size_t a, size_t b) //used only for size_t variables
@@ -115,11 +126,20 @@ void swap(size_t * a, size_t * b) //used only for size_t variables
     * a ^= * b;
 }
 
-void simple_merge(const int * array,
-                  size_t left_1, size_t right_1,
-                  size_t left_2, size_t right_2,
-                  int * result, size_t left_3)
+void simple_merge(int * array,
+                    size_t left_1, size_t right_1,
+                    size_t left_2, size_t right_2,
+                    int * result, size_t left_3)
 {
+//    simple_merge_t * params = (simple_merge_t *) args;
+//    int * array = params->array;
+//    int *result = params->result;
+//    size_t left_1 = params->left_1;
+//    size_t left_2 = params->left_2;
+//    size_t left_3 = params->left_3;
+//    size_t right_1 = params->right_1;
+//    size_t right_2 = params->right_2;
+
     size_t index_1 = left_1;
     size_t index_2 = left_2;
     size_t index_3 = left_3;
@@ -182,14 +202,36 @@ void merge(int * array,
         size_t mid_3 = left_3 + (mid_1 - left_1) + (mid_2 - left_2);
         result[mid_3] = array[mid_1];
 
-
         {
+//            struct simple_merge_t params;
+//            params.array = array;
+//            params.result = result;
+//            params.left_1 = left_1;
+//            params.right_1 = mid_1 - 1;
+//            params.left_2 = left_2;
+//            params.right_2 = mid_2 -1;
+//            params.left_3 = left_3;
+//
+//            pthread_create(threads + thread_id, NULL, simple_merge, (void *) &params);
+
             simple_merge(array, left_1, mid_1 - 1, left_2, mid_2 - 1, result, left_3);
         }
 
         {
+//            struct simple_merge_t params;
+//            params.array = array;
+//            params.result = result;
+//            params. left_1 = mid_1 + 1;
+//            params.right_1 = right_1;
+//            params.left_2 = mid_2;
+//            params.right_2 = right_2;
+//            params.left_3 = mid_3 + 1;
+//
+//            pthread_create(threads + thread_id + 1, NULL, simple_merge, (void *) &params);
+
             simple_merge(array, mid_1 + 1, right_1, mid_2, right_2, result, mid_3 + 1);
         }
+
     }
 }
 
@@ -199,8 +241,10 @@ void * merge_iteration(void * args)
     size_t i = params->i;
     size_t j = params->j;
     size_t arr_len = params->arr_len;
+    size_t thread_id = params->thread_id;
     int * array = params->array;
     int * result = params->result;
+    pthread_t * threads = params->threads;
 
     if (i + j <= arr_len)
     {
@@ -217,60 +261,99 @@ void * merge_iteration(void * args)
 
 void parallel_merge_sort (int * array, size_t arr_len,
                           size_t chunk_len, int * result,
-                          pthread_t * threads, size_t thread_count)
+                          pthread_t * threads, size_t thread_count, threadpool_t * threadpool)
 {
-    sort_chunks(array, arr_len, chunk_len, threads, thread_count);
+    sort_chunks(array, arr_len, chunk_len, threads, thread_count, threadpool);
 
     int flag = 0;
 
-    for(size_t j = 2 * chunk_len; j <= 2 * arr_len; j += j)
+//    if (thread_count == 1)
+//    {
+//        merge_iteration_t * params = (merge_iteration_t *) malloc(sizeof(merge_iteration_t) * thread_count);
+//    }
+//    else
+//    {
+//        merge_iteration_t * params = (merge_iteration_t *) malloc(sizeof(merge_iteration_t) *
+//                                                                 thread_count / 2);
+//        simple_merge_t * arg_params = (simple_merge_t *) malloc(sizeof(simple_merge_t) *
+//                                                                 thread_count / 2);
+//    }
+
+    if (1)
     {
-        if (flag)
-        {
-            memcpy(array, result, sizeof(int) * arr_len);
-        }
-        else
-        {
-            memcpy(result, array, sizeof(int) * arr_len);
-            flag = 1;
-        }
+        merge_iteration_t * params = (merge_iteration_t *) malloc(sizeof(merge_iteration_t) * thread_count);
 
-        size_t i = 0;
-        struct merge_iteration_t params;
-        params.array = array;
-        params.arr_len = arr_len;
-        params.result = result;
-        params.j = j;
+        for (size_t j = 2 * chunk_len; j <= 2 * arr_len; j += j) {
+            if (flag) {
+                memcpy(array, result, sizeof(int) * arr_len);
+            } else {
+                memcpy(result, array, sizeof(int) * arr_len);
+                flag = 1;
+            }
 
-        while (i < arr_len)
-        {
-            for (size_t t = 0; t < thread_count; t++)
-            {
-                params.i = i;
-                pthread_create(threads + t, NULL, merge_iteration, &params);
-                pthread_join(threads[t], NULL);
+            size_t i = 0;
 
-                i += j;
-                if (i >=arr_len)
-                {
-                    break;
+            while (i < arr_len) {
+                size_t threads_working = 0;
+                for (size_t t = 0; t < thread_count; t++) {
+                    params[t] = merge_iteration_init(array, result, arr_len, i, j, t, threads);
+                    pthread_create(threads + t, NULL, merge_iteration, params + t);
+                    threads_working++;
+
+                    i += j;
+                    if (i >= arr_len) {
+                        break;
+                    }
                 }
+                for (size_t t = 0; t < threads_working; t++) {
+                    pthread_join(threads[t], NULL);
+                }
+
             }
         }
+        free(params);
+    }
+    else
+    {
+        merge_iteration_t * params = (merge_iteration_t *) malloc(sizeof(merge_iteration_t) *
+                                                                 thread_count / 2);
+        simple_merge_t * arg_params = (simple_merge_t *) malloc(sizeof(simple_merge_t) *
+                                                                 thread_count / 2);
+        for (size_t j = 2 * chunk_len; j <= 2 * arr_len; j += j) {
+            if (flag) {
+                memcpy(array, result, sizeof(int) * arr_len);
+            } else {
+                memcpy(result, array, sizeof(int) * arr_len);
+                flag = 1;
+            }
 
-        /*for (i = 0; i < arr_len; i += j)
-        {
-            if (i + j <= arr_len)
-            {
-                merge(array, i, i + j / 2 - 1, i + j / 2, i + j - 1, result, i);
-            }
-            else
-            {
-                if (i + j / 2 < arr_len)
-                {
-                    merge(array, i, i + j / 2 - 1, i + j / 2, arr_len - 1, result, i);
+            size_t i = 0;
+
+            while (i < arr_len) {
+                size_t threads_working = 0;
+                for (size_t t = 0; t < thread_count / 2; t++) {
+                    //struct merge_iteration_t params;
+                    params[t].array = array;
+                    params[t].arr_len = arr_len;
+                    params[t].result = result;
+                    params[t].j = j;
+                    params[t].i = i;
+                    params[t].thread_id = t;
+                    params[t].threads = threads;
+                    pthread_create(threads + t, NULL, merge_iteration, params + t);
+                    threads_working++;
+
+                    i += j;
+                    if (i >= arr_len) {
+                        break;
+                    }
                 }
+                for (size_t t = 0; t < threads_working; t++) {
+                    pthread_join(threads[t], NULL);
+                }
+
             }
-        }*/
+        }
+        free(params);
     }
 }

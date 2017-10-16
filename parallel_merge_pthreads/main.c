@@ -6,7 +6,6 @@
 #include "merge.h"
 
 
-
 int main(int argc, char ** argv)
 {
     int * arr;
@@ -17,6 +16,7 @@ int main(int argc, char ** argv)
     FILE * data;
     double start_time, end_time_1, end_time_2;
     pthread_t * threads;
+    threadpool_t * threadpool;
 
     if (argc != 4)
     {
@@ -33,6 +33,7 @@ int main(int argc, char ** argv)
         result = (int *)malloc((sizeof(int) * n));
         arr_copy = (int *)malloc((sizeof(int) * n));
         threads = (pthread_t *)malloc((sizeof(pthread_t) * thread_count));
+        threadpool = threadpool_create((int)thread_count, 1000000, 0);
         stats = fopen("stats.txt", "w");
         data = fopen("data.txt", "w");
 
@@ -49,11 +50,11 @@ int main(int argc, char ** argv)
     gen_array(arr, n);
     memcpy(arr_copy, arr, sizeof(int) * n);
     fprintf(data, "Original array:\n");
-//    print_array(arr, n, stdout);
+    print_array(arr, n, data);
 
     //parallel merge sort
     start_time = omp_get_wtime();
-    parallel_merge_sort(arr, n, m, result, threads, thread_count);
+    parallel_merge_sort(arr, n, m, result, threads, thread_count, threadpool);
     end_time_1 = omp_get_wtime() - start_time;
 
     //quick sort
@@ -64,7 +65,7 @@ int main(int argc, char ** argv)
     printf("Parallel merge sort time: %lf\nQuick sort time: %lf\n", end_time_1, end_time_2);
 
     fprintf(data, "Sorted array:\n");
-//    print_array(result, n, stdout);
+    print_array(result, n, data);
     fprintf(stats, "%lfs %ld %ld %ld", end_time_1, n, m, thread_count);
 
     fclose(stats);
@@ -73,6 +74,7 @@ int main(int argc, char ** argv)
     free(result);
     free(arr_copy);
     free(threads);
+    threadpool_destroy(threadpool, 0);
 
     return 0;
 }
