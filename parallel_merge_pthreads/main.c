@@ -16,7 +16,6 @@ int main(int argc, char ** argv)
     FILE * data;
     double start_time, end_time_1, end_time_2;
     pthread_t * threads;
-    threadpool_t * threadpool;
 
     if (argc != 4)
     {
@@ -33,7 +32,6 @@ int main(int argc, char ** argv)
         result = (int *)malloc((sizeof(int) * n));
         arr_copy = (int *)malloc((sizeof(int) * n));
         threads = (pthread_t *)malloc((sizeof(pthread_t) * thread_count));
-        threadpool = threadpool_create((int)thread_count, 1000000, 0);
         stats = fopen("stats.txt", "w");
         data = fopen("data.txt", "w");
 
@@ -54,7 +52,7 @@ int main(int argc, char ** argv)
 
     //parallel merge sort
     start_time = omp_get_wtime();
-    parallel_merge_sort(arr, n, m, result, threads, thread_count, threadpool);
+    parallel_merge_sort(arr, n, m, result, threads, thread_count);
     end_time_1 = omp_get_wtime() - start_time;
 
     //quick sort
@@ -74,7 +72,6 @@ int main(int argc, char ** argv)
     free(result);
     free(arr_copy);
     free(threads);
-    threadpool_destroy(threadpool, 0);
 
     return 0;
 }
