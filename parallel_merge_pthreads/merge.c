@@ -2,50 +2,6 @@
 #include <stdlib.h>
 #include <memory.h>
 
-chunk_t chunk_init(int * array, size_t arr_len, size_t chunk_len, size_t index)
-{
-    chunk_t res;
-    res.array = array;
-    res.arr_len = arr_len;
-    res.chunk_len = chunk_len;
-    res.index = index;
-    return res;
-}
-
-merge_iteration_t merge_iteration_init(int * array, int * result,
-                                       size_t arr_len, size_t i, size_t j,
-                                       size_t thread_id, pthread_t * threads,
-                                       int flag, size_t thread_count, simple_merge_t * arg_params)
-{
-    merge_iteration_t res;
-    res.array = array;
-    res.result = result;
-    res.arr_len = arr_len;
-    res.i = i;
-    res.j = j;
-    res.thread_id = thread_id;
-    res.threads = threads;
-    res.parallel_flag = flag;
-    res.thread_count = thread_count;
-    res.arg_params = arg_params;
-    return res;
-}
-
-simple_merge_t simple_merge_init(int * array, int * result,
-                                 size_t left_1, size_t right_1,
-                                 size_t left_2, size_t right_2, size_t left_3)
-{
-    simple_merge_t res;
-    res.array = array;
-    res.result = result;
-    res.left_1 = left_1;
-    res.left_2 = left_2;
-    res.left_3 = left_3;
-    res.right_1= right_1;
-    res.right_2 = right_2;
-    return res;
-}
-
 int comparator (const void * a, const void * b)
 {
     return ( *(int*)a - *(int*)b );
@@ -287,35 +243,27 @@ void parallel_merge_sort (int * array, size_t arr_len,
 
     if (thread_count == 1)
     {
-        merge_iteration_t * params = (merge_iteration_t *) malloc(sizeof(merge_iteration_t) * thread_count);
+        merge_iteration_t * params = (merge_iteration_t *)malloc(sizeof(merge_iteration_t));
 
-        for (size_t j = 2 * chunk_len; j <= 2 * arr_len; j += j) {
-            if (flag) {
+        for (size_t j = 2 * chunk_len; j <= 2 * arr_len; j += j)
+        {
+            if (flag)
+            {
                 memcpy(array, result, sizeof(int) * arr_len);
-            } else {
+            }
+            else
+            {
                 memcpy(result, array, sizeof(int) * arr_len);
                 flag = 1;
             }
 
-            size_t i = 0;
+            size_t i;
 
-            while (i < arr_len) {
-                size_t threads_working = 0;
-                for (size_t t = 0; t < thread_count; t++) {
-                    params[t] = merge_iteration_init(array, result, arr_len, i, j,
-                                                     t, threads, 0, 1, NULL);
-                    pthread_create(threads + t, NULL, merge_iteration, params + t);
-                    threads_working++;
-
-                    i += j;
-                    if (i >= arr_len) {
-                        break;
-                    }
-                }
-                for (size_t t = 0; t < threads_working; t++) {
-                    pthread_join(threads[t], NULL);
-                }
-
+            for (i = 0; i < arr_len; i += j)
+            {
+                params[0] = merge_iteration_init(array, result, arr_len, i, j,
+                                                 0, threads, 0, 1, NULL);
+                merge_iteration(params);
             }
         }
         free(params);
@@ -326,30 +274,38 @@ void parallel_merge_sort (int * array, size_t arr_len,
                                                                  thread_count / 2);
         simple_merge_t * arg_params = (simple_merge_t *) malloc(sizeof(simple_merge_t) *
                                                                  thread_count);
-        for (size_t j = 2 * chunk_len; j <= 2 * arr_len; j += j) {
-            if (flag) {
+        for (size_t j = 2 * chunk_len; j <= 2 * arr_len; j += j)
+        {
+            if (flag)
+            {
                 memcpy(array, result, sizeof(int) * arr_len);
-            } else {
+            }
+            else
+            {
                 memcpy(result, array, sizeof(int) * arr_len);
                 flag = 1;
             }
 
             size_t i = 0;
 
-            while (i < arr_len) {
+            while (i < arr_len)
+            {
                 size_t threads_working = 0;
-                for (size_t t = 0; t < thread_count / 2; t++) {
+                for (size_t t = 0; t < thread_count / 2; t++)
+                {
                     params[t] = merge_iteration_init(array, result, arr_len, i, j,
                                                      t, threads, 1, thread_count, arg_params);
                     pthread_create(threads + t, NULL, merge_iteration, params + t);
                     threads_working++;
 
                     i += j;
-                    if (i >= arr_len) {
+                    if (i >= arr_len)
+                    {
                         break;
                     }
                 }
-                for (size_t t = 0; t < threads_working; t++) {
+                for (size_t t = 0; t < threads_working; t++)
+                {
                     pthread_join(threads[t], NULL);
                 }
 

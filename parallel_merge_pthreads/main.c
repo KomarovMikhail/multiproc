@@ -5,7 +5,6 @@
 #include <omp.h>
 #include "merge.h"
 
-
 int main(int argc, char ** argv)
 {
     int * arr;
