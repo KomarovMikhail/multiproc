@@ -4,14 +4,14 @@
 #include <mpi.h>
 
 typedef struct {
-    size_t x, y, r;
+    int x, y, r;
 } point_t;
 
-int main(int argc, char * argv[]) {
+int main(int argc, char ** argv)
+{
     MPI_Init(&argc, &argv);
 
-    size_t l, a, b, N, curr_proc_x, curr_proc_y, mask_size;
-    int rank, size, seed, offset;
+    int l, a, b, N, curr_proc_x, curr_proc_y, mask_size, rank, size, seed, offset;
     double start_time, end_time, full_time;
     int *seeds, *mask;
     point_t *points;
@@ -24,10 +24,11 @@ int main(int argc, char * argv[]) {
     }
     else
     {
-        l = (unsigned) atoi(argv[1]);
-        a = (unsigned) atoi(argv[2]);
-        b = (unsigned) atoi(argv[3]);
-        N = (unsigned) atoi(argv[4]);
+        /* initialization  */
+        l = atoi(argv[1]);
+        a = atoi(argv[2]);
+        b = atoi(argv[3]);
+        N = atoi(argv[4]);
 
         points = (point_t*)malloc(N * sizeof(point_t));
         seeds = (int*)malloc(a * b * sizeof(int));
@@ -85,7 +86,8 @@ int main(int argc, char * argv[]) {
         return 1;
     }
 
-    for (int i = 0; i < mask_size; ++i) {
+    for (int i = 0; i < mask_size; ++i)
+    {
         mask[i] = 0;
     }
 
@@ -95,10 +97,10 @@ int main(int argc, char * argv[]) {
 
     for (int i = 0; i < N; ++i)
     {
-        size_t currentX = points[i].x;
-        size_t currentY = points[i].y;
-        size_t currentR = points[i].r;
-        mask[currentY * l * size + currentX * size + currentR] += 1;
+        int current_x = points[i].x;
+        int current_y = points[i].y;
+        int current_r = points[i].r;
+        mask[current_y * l * size + current_x * size + current_r] += 1;
     }
 
     MPI_Aint intex;
@@ -133,7 +135,7 @@ int main(int argc, char * argv[]) {
             return 1;
         }
 
-        fprintf(stats, "%lu %lu %lu %lu %fs\n", l, a, b, N, full_time);
+        fprintf(stats, "%d %d %d %d %fs\n", l, a, b, N, full_time);
 
         fclose(stats);
     }
@@ -144,3 +146,4 @@ int main(int argc, char * argv[]) {
 
     return 0;
 }
+
