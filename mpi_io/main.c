@@ -3,18 +3,21 @@
 #include <time.h>
 #include <mpi.h>
 
-typedef struct {
+typedef struct point_t {
     int x, y, r;
 } point_t;
 
-int main(int argc, char ** argv)
+int main(int argc, char *argv[])
 {
     MPI_Init(&argc, &argv);
 
     int l, a, b, N, curr_proc_x, curr_proc_y, mask_size, rank, size, seed, offset;
     double start_time, end_time, full_time;
     int *seeds, *mask;
-    point_t *points;
+    struct point_t *points;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if (argc != 5)
     {
@@ -24,30 +27,27 @@ int main(int argc, char ** argv)
     }
     else
     {
-        /* initialization  */
+	/* initialization  */
         l = atoi(argv[1]);
         a = atoi(argv[2]);
         b = atoi(argv[3]);
         N = atoi(argv[4]);
 
-        points = (point_t*)malloc(N * sizeof(point_t));
-        seeds = (int*)malloc(a * b * sizeof(int));
+	offset = ((rank % a) * l + (rank / a) * a * l * l) * size;
 
+        points = (struct point_t*)malloc(N * sizeof(struct point_t));
+        seeds = (int*)malloc(size * sizeof(int));
+
+	
         if (points == NULL || seeds == NULL)
         {
             printf("virtual memory exhausted\n");
             MPI_Finalize();
             return 1;
         }
-
-        curr_proc_x = rank % a;
-        curr_proc_y = rank / a;
     }
 
     start_time = MPI_Wtime();
-
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     if (size != a * b)
     {
@@ -58,7 +58,7 @@ int main(int argc, char ** argv)
 
     if (rank == 0)
     {
-        srand((unsigned)time(NULL));
+        srand(time(NULL));
 
         for (int i = 0; i < size; ++i)
         {
@@ -71,13 +71,14 @@ int main(int argc, char ** argv)
 
     for (int i = 0; i < N; ++i)
     {
-        points[i].x = rand_r(&seed) % l;
-        points[i].y = rand_r(&seed) % l;
-        points[i].r = rand_r(&seed) % (a * b);
+	struct point_t new_point;
+	new_point.x = rand_r((unsigned int*)&seed) % l;
+        new_point.y = rand_r((unsigned int*)&seed) % l;
+        new_point.r = rand_r((unsigned int*)&seed) % (a * b);
+	points[i] = new_point;
     }
 
-    mask_size = l * l * size;
-    mask = (int*)malloc(mask_size * sizeof(int));
+    mask = (int*)malloc(l * l * size * sizeof(int));
 
     if (mask == NULL)
     {
@@ -86,7 +87,7 @@ int main(int argc, char ** argv)
         return 1;
     }
 
-    for (int i = 0; i < mask_size; ++i)
+    for (int i = 0; i < l * l * size; ++i)
     {
         mask[i] = 0;
     }
@@ -97,10 +98,7 @@ int main(int argc, char ** argv)
 
     for (int i = 0; i < N; ++i)
     {
-        int current_x = points[i].x;
-        int current_y = points[i].y;
-        int current_r = points[i].r;
-        mask[current_y * l * size + current_x * size + current_r] += 1;
+        mask[points[i].y * l * size + points[i].x * size + points[i].r] += 1;
     }
 
     MPI_Aint intex;
@@ -111,10 +109,9 @@ int main(int argc, char ** argv)
     MPI_Type_vector(l, l * size, l * a * size, MPI_INT, &view);
     MPI_Type_commit(&view);
 
-    offset = (curr_proc_x * l + curr_proc_y * a * l * l) * size;
     MPI_File_set_view(bin_file, offset * sizeof(int), MPI_INT, view, "native", MPI_INFO_NULL);
 
-    MPI_File_write(bin_file, mask, mask_size, MPI_INT, MPI_STATUS_IGNORE);
+    MPI_File_write(bin_file, mask, l * l * size, MPI_INT, MPI_STATUS_IGNORE);
     MPI_Type_free(&view);
 
     MPI_File_close(&bin_file);
@@ -141,7 +138,6 @@ int main(int argc, char ** argv)
     }
 
     free(points);
-
     MPI_Finalize();
 
     return 0;
